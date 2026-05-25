@@ -442,7 +442,7 @@ Windows / Git Bash 推荐配置：
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:/Users/Sunky/.claude/skills/pushplus-turn-notify/scripts/notify_claude_hook.js\" --hook Notification",
+            "command": "node \"$HOME/.claude/skills/pushplus-turn-notify/scripts/notify_claude_hook.js\" --hook Notification",
             "timeout": 30
           }
         ]
@@ -454,7 +454,7 @@ Windows / Git Bash 推荐配置：
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:/Users/Sunky/.claude/skills/pushplus-turn-notify/scripts/notify_claude_hook.js\" --hook Stop",
+            "command": "node \"$HOME/.claude/skills/pushplus-turn-notify/scripts/notify_claude_hook.js\" --hook Stop",
             "timeout": 30
           }
         ]
@@ -464,7 +464,7 @@ Windows / Git Bash 推荐配置：
 }
 ```
 
-把 `C:/Users/Sunky` 换成你的用户目录。也可以使用 `node \"$HOME/.claude/skills/pushplus-turn-notify/scripts/notify_claude_hook.js\" --hook Notification`，前提是你的 Claude Code hook shell 会展开 `$HOME`。
+Windows 原生环境如果不展开 `$HOME`，把命令里的 `$HOME` 换成 `%USERPROFILE%` 对应的实际用户目录。
 
 macOS/Linux 示例：
 
@@ -516,8 +516,8 @@ macOS/Linux 示例：
 Windows / Git Bash dry-run：
 
 ```bash
-node "C:/Users/Sunky/.claude/skills/pushplus-turn-notify/scripts/notify_claude_hook.js" --hook Notification --dry-run <<'JSON'
-{"hook_event_name":"Notification","message":"Claude needs your permission to use Bash","cwd":"/e/Projects/wkSpace/plus++_config","session_id":"test-session"}
+node "$HOME/.claude/skills/pushplus-turn-notify/scripts/notify_claude_hook.js" --hook Notification --dry-run <<'JSON'
+{"hook_event_name":"Notification","message":"Claude needs your permission to use Bash","cwd":"$PWD","session_id":"test-session"}
 JSON
 ```
 
@@ -532,8 +532,8 @@ JSON
 真实发送测试时去掉 `--dry-run`：
 
 ```bash
-node "C:/Users/Sunky/.claude/skills/pushplus-turn-notify/scripts/notify_claude_hook.js" --hook Notification <<'JSON'
-{"hook_event_name":"Notification","message":"Claude Code PushPlus hook verification from user-level skill setup.","cwd":"/e/Projects/wkSpace/plus++_config","session_id":"manual-test"}
+node "$HOME/.claude/skills/pushplus-turn-notify/scripts/notify_claude_hook.js" --hook Notification <<'JSON'
+{"hook_event_name":"Notification","message":"Claude Code PushPlus hook verification from user-level skill setup.","cwd":"$PWD","session_id":"manual-test"}
 JSON
 ```
 
@@ -541,9 +541,9 @@ JSON
 
 ### 7.5 Claude Code 配置问题记录
 
-- 本次已把脚本复制到 `C:\Users\Sunky\.claude\skills\pushplus-turn-notify\`，并把 `C:\Users\Sunky\.claude\settings.json` 的 hook 命令改为用户级脚本路径。
+- 本次配置已把脚本复制到用户级 `~/.claude/skills/pushplus-turn-notify/`，并把 `~/.claude/settings.json` 的 hook 命令改为用户级脚本路径。
 - `claude doctor --summary --no-color` 在当前 Claude Code 版本中不可用，会报 `unknown option '--summary'`；改用 `claude doctor`。
-- 当前 Git Bash PATH 中没有 `claude`，但全局 npm 目录有 `D:\Program Files\nodejs\node_global\claude`，可用 `"/d/Program Files/nodejs/node_global/claude" doctor` 调用。
+- 如果当前 Git Bash PATH 中没有 `claude`，但 Claude Code 安装在全局 npm 目录，可以用全局安装目录里的 `claude` 可执行文件运行 `doctor`，或把该目录加入 PATH。
 - 当前 Git Bash 环境没有 Python 和 PowerShell 命令，因此 Codex 用的 `.ps1` / `.sh` wrapper 不适合作为 Claude Code hook 命令；Claude Code 配置改用 Node wrapper。
 - JSON 配置中命令路径建议使用正斜杠和双引号包裹，避免 Windows 反斜杠转义和 `plus++_config` 路径解析问题。
 - 第一次修改 Claude Code hook 后，Claude Code 可能要求信任新增 hook；批准后通知才会稳定触发。
