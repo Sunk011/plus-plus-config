@@ -24,6 +24,7 @@ pushplus-turn-notify/
 ├── references/
 │   └── pushplus-api.md
 └── scripts/
+    ├── notify_claude_hook.js
     ├── notify_pushplus_event.py
     ├── notify_pushplus_hook.ps1
     ├── notify_pushplus_hook.sh
@@ -387,7 +388,110 @@ Windows 默认 GBK locale 下，`SKILL.md` 含中文时可能需要先设置 `PY
 
 最后可以在一个需要审批的场景中触发 Codex 权限确认，例如需要 `require_escalated` 的命令。首次触发新增 hook 时，可能先出现 hook 信任确认；批准后应收到 PushPlus 提醒。
 
-## 7. 可选 Stop Hook
+## 7. 配置 Claude Code Hook
+
+Claude Code 使用 `~/.claude/settings.json` 的 JSON 配置，不使用 Codex 的 `~/.codex/config.toml`。本仓库新增的 `notify_claude_hook.js` 会读取 Claude Code hook 通过 stdin 传入的 JSON，并复用第 2 步的 PushPlus token 配置。
+
+推荐先启用 `Notification`，用于 Claude Code 需要权限、等待用户输入或需要关注时提醒；如果也希望每轮 Claude Code 停止时提醒，再启用 `Stop`。
+
+### Windows / Git Bash 当前验证配置
+
+本机 Git Bash 环境没有 `python`、`python3`、`py` 和 `powershell.exe` 命令，但有 Node.js，所以 Claude Code hook 使用 Node wrapper。已在 `C:\Users\Sunky\.claude\settings.json` 中加入：
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"E:/Projects/wkSpace/plus++_config/pushplus-turn-notify/scripts/notify_claude_hook.js\" --hook Notification",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"E:/Projects/wkSpace/plus++_config/pushplus-turn-notify/scripts/notify_claude_hook.js\" --hook Stop",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+如果只想在需要关注时提醒，不想每轮结束都提醒，可以删除 `Stop` 配置块。
+
+### macOS/Linux 示例
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/pushplus-turn-notify/scripts/notify_claude_hook.js\" --hook Notification",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+如果把 skill 安装在其他目录，把 `command` 中的脚本路径改成实际绝对路径。不要把 PushPlus token 写进 `settings.json`。
+
+### Claude Code 事件映射
+
+- `Notification`：映射为 `permission` 或 `blocked`。当 hook `message` 包含 permission、approve、approval 时按 `permission` 发送，否则按 `blocked` 发送。
+- `Stop`：映射为 `completed`。
+- `SubagentStop`：默认不建议配置，否则子代理结束也会提醒，容易过于频繁。
+
+`notify_claude_hook.js` 会把 Claude Code hook JSON 中的 `cwd` 写入正文的 `pwd / 工作目录`，并在存在时附带 `session_id`。
+
+### Claude Code Hook 验证
+
+本地 dry-run：
+
+```bash
+node "pushplus-turn-notify/scripts/notify_claude_hook.js" --hook Notification --dry-run <<'JSON'
+{"hook_event_name":"Notification","message":"Claude needs your permission to use Bash","cwd":"/e/Projects/wkSpace/plus++_config","session_id":"test-session"}
+JSON
+```
+
+真实发送测试：
+
+```bash
+node "pushplus-turn-notify/scripts/notify_claude_hook.js" --hook Notification <<'JSON'
+{"hook_event_name":"Notification","message":"Claude Code PushPlus hook verification from local setup.","cwd":"/e/Projects/wkSpace/plus++_config","session_id":"manual-test"}
+JSON
+```
+
+成功时 PushPlus 返回 `code: 200`。
+
+### Claude Code 配置问题记录
+
+- `claude doctor --summary --no-color` 在当前 Claude Code 版本中不可用，会报 `unknown option '--summary'`；改用 `claude doctor`。
+- 当前 Git Bash PATH 中没有 `claude`，但全局 npm 目录有 `D:\Program Files\nodejs\node_global\claude`，可用 `"/d/Program Files/nodejs/node_global/claude" doctor` 调用。
+- 当前 Git Bash 环境没有 Python 和 PowerShell 命令，因此 Codex 用的 `.ps1` / `.sh` wrapper 不适合作为 Claude Code hook 命令；Claude Code 配置改用 Node wrapper。
+- JSON 配置中命令路径建议使用正斜杠和双引号包裹，避免 Windows 反斜杠转义和 `plus++_config` 路径解析问题。
+- 第一次修改 Claude Code hook 后，Claude Code 可能要求信任新增 hook；批准后通知才会稳定触发。
+- 同时启用模型主动通知和 `Stop` hook 时，完成通知可能重复。需要减少噪音时保留 `Notification`，删除 `Stop`。
+
+## 8. 可选 Stop Hook
 
 如果希望 Codex 每次停止时都通过 hook 发送 PushPlus，而不是只依赖 skill 主动发送，可以额外配置 `Stop` hook。
 
@@ -415,7 +519,7 @@ statusMessage = "Codex PushPlus Stop 通知"
 
 注意：如果模型也会在完成前主动调用 `pushplus-turn-notify`，再配置 `Stop` hook 可能导致重复通知。通常建议先只配置 `PermissionRequest` hook，再由 skill 规则处理普通完成、review 和 blocked 事件。
 
-## 8. 使用约定
+## 9. 使用约定
 
 - 每轮任务最多发送一次提醒，除非用户明确要求再发。
 - 不要给普通状态更新、短对话或每一步工具调用发提醒。
@@ -423,7 +527,7 @@ statusMessage = "Codex PushPlus Stop 通知"
 - 修改通知策略优先编辑 `pushplus-turn-notify/SKILL.md`。
 - 修改 PushPlus API 字段或响应解析时，再参考 `pushplus-turn-notify/references/pushplus-api.md`。
 
-## 9. 故障排查
+## 10. 故障排查
 
 - `python: command not found`: 使用 `python3`，或安装 Python。`notify_pushplus_hook.ps1` 和 `notify_pushplus_hook.sh` 会自动尝试 `python`、`python3`、`py -3` 和 conda 的 `py310` 环境。
 - `PushPlus token not found`: 检查用户级配置、环境变量或 `--token` 参数。
@@ -433,7 +537,7 @@ statusMessage = "Codex PushPlus Stop 通知"
 - `PermissionRequest` 没有 PushPlus 提醒: 检查 `~/.codex/config.toml` 是否有 PushPlus hook、是否已经信任新增 hook、wrapper 手动测试是否返回 `code: 200`。
 - `conda run` 输出编码报错: 直接调用当前环境里的 Python 解释器，绕过 `conda run` 的输出编码路径。
 
-## 10. 安全注意事项
+## 11. 安全注意事项
 
 - 不要提交真实 token。
 - 不要把 token 写进 README、部署文档、skill 文件或脚本。
