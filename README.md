@@ -268,6 +268,32 @@ timeout = 30
 statusMessage = "Codex PushPlus 权限确认通知"
 ```
 
+macOS/Linux 可以用下面的 shell 命令追加到 `~/.codex/config.toml`：
+
+```bash
+mkdir -p ~/.codex
+
+cat >> ~/.codex/config.toml <<'TOML'
+
+[[hooks.PermissionRequest]]
+[[hooks.PermissionRequest.hooks]]
+type = "command"
+command = '''sh "$HOME/.codex/skills/pushplus-turn-notify/scripts/notify_pushplus_hook.sh" --event permission --summary "Codex needs confirmation" --summary-zh "Codex 需要确认" --details "A Codex session is waiting for your approval to continue." --details-zh "Codex 会话正在等待你的批准以继续。"'''
+timeout = 30
+statusMessage = "Codex PushPlus 权限确认通知"
+TOML
+```
+
+如果 `~/.codex/config.toml` 中已经有 `[[hooks.PermissionRequest]]`，也可以只把下面这个 hook 追加到现有 `PermissionRequest` 配置块内：
+
+```toml
+[[hooks.PermissionRequest.hooks]]
+type = "command"
+command = '''sh "$HOME/.codex/skills/pushplus-turn-notify/scripts/notify_pushplus_hook.sh" --event permission --summary "Codex needs confirmation" --summary-zh "Codex 需要确认" --details "A Codex session is waiting for your approval to continue." --details-zh "Codex 会话正在等待你的批准以继续。"'''
+timeout = 30
+statusMessage = "Codex PushPlus 权限确认通知"
+```
+
 Git Bash 中可直接使用同一个 `.sh` wrapper 测试；实际 Windows Codex hook 仍建议使用上面的 PowerShell 配置。
 
 `notify_pushplus_hook.ps1` 和 `notify_pushplus_hook.sh` 都会自动定位 Python，调用同目录下的：
