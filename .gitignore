@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+
+.env
+.env.*
+!.env.example
+
+*.log
+*.tmp
+*.bak

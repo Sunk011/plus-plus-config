@@ -1,0 +1,4 @@
+interface:
+  display_name: "PushPlus Turn Notify"
+  short_description: "Send PushPlus turn notifications from any workspace."
+  default_prompt: "Use $pushplus-turn-notify to send a PushPlus notification for this Codex workflow event, regardless of the current working directory. Include English and Chinese summary/details and the current Codex working directory."
