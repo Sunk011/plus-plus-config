@@ -80,6 +80,11 @@ rm -rf "$dst"/scripts/__pycache__
 
 不要把真实 token 写进本仓库、`SKILL.md`、README、部署文档或脚本。
 
+PushPlus 官方地址：
+
+- 官网：`https://www.pushplus.plus/`
+- 获取用户 token 接口文档：`https://www.pushplus.plus/api/open/user/token`
+
 推荐使用用户级配置：
 
 ```text
